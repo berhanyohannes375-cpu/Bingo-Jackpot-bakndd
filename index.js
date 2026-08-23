@@ -4,6 +4,7 @@ const { Telegraf } = require('telegraf');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
+app.use(require('cors')())
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
@@ -59,12 +60,42 @@ bot.on('text', async (ctx) => {
 // API Routes for Mini App
 app.use(express.json());
 
-// Get balance
+// Allow the Netlify frontend to talk to this backend
+app.use(require('cors')());
+app.use(express.json());
+
+// API to get real balance from database
 app.get('/api/balance', async (req, res) => {
-  // For now, return mock data - we'll add Telegram auth later
-  res.json({ balance: 1000 });
+  const telegramId = req.query.telegramId;
+  if (!telegramId) return res.json({ balance: 0 });
+
+  // Note: using 'user' because that's the table name in your screenshot
+  const { data } = await supabase
+    .from('user') 
+    .select('balance')
+    .eq('telegramId', telegramId)
+    .single();
+
+  res.json({ balance: data ? data.balance : 0 });
 });
 
+// API to buy a card (deduct money)
+app.post('/api/buy-card', async (req, res) => {
+  const { telegramId, amount } = req.body;
+  
+  // Check balance
+  const { data: userData } = await supabase.from('user').select('balance').eq('telegramId', telegramId).single();
+  
+  if (!userData || userData.balance < amount) {
+    return res.json({ success: false, message: 'Insufficient balance' });
+  }
+
+  // Deduct money
+  const newBalance = userData.balance - amount;
+  await supabase.from('user').update({ balance: newBalance }).eq('telegramId', telegramId);
+
+  res.json({ success: true, newBalance: newBalance });
+});
 // Buy card
 app.post('/api/game/buy-card', async (req, res) => {
   const { betAmount } = req.body;

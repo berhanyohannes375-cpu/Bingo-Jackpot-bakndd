@@ -56,7 +56,36 @@ bot.on('text', async (ctx) => {
     ctx.reply('✅ *Deposit Submitted!*\n\n⏳ Pending admin verification.');
   }
 });
+// API Routes for Mini App
+app.use(express.json());
 
+// Get balance
+app.get('/api/balance', async (req, res) => {
+  // For now, return mock data - we'll add Telegram auth later
+  res.json({ balance: 1000 });
+});
+
+// Buy card
+app.post('/api/game/buy-card', async (req, res) => {
+  const { betAmount } = req.body;
+  
+  // For now, return success with mock data
+  res.json({ 
+    success: true, 
+    gameId: 'demo-game-123',
+    message: 'Card purchased!'
+  });
+});
+
+// Get game status
+app.get('/api/game/:gameId/status', async (req, res) => {
+  // Return mock game state
+  res.json({
+    status: 'playing',
+    calledNumbers: [],
+    winner: null
+  });
+});
 bot.launch();
 console.log('✅ Bot is running!');
 
